@@ -1,0 +1,5 @@
+aiohttp>=3.9.0
+starknet-py>=0.28.0
+python-bitcoinlib>=0.12.2
+requests>=2.31.0
+python-dotenv>=1.0.0

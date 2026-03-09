@@ -1,0 +1,45 @@
+# Cairo / Scarb
+contracts/target/
+contracts/.snfoundry_cache/
+*.sierra.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Environment & secrets
+.env
+node/.env
+*.json
+!contracts/**/*.json
+!package.json
+
+# Wallet files (contain private keys!)
+covenant_wallet.json
+node/covenant_wallet.json
+node/node_state.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+firebase-debug.log
+
+# Temp
+/tmp/
+*.tmp

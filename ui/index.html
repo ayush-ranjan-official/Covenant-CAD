@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVENANT-CAD — Bitcoin OP_CAT Covenant Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ════════════════════════════════════════════════════════════
+           COVENANT-CAD  —  Cyberpunk Control Room / Bloomberg Terminal
+           ════════════════════════════════════════════════════════════ */
+
+        :root {
+            /* ── Background layers (from deepest to surface) ── */
+            --bg-void: #06080c;
+            --bg-base: #0b0f18;
+            --bg-surface: #111827;
+            --bg-elevated: #1a2234;
+            --bg-input: #0d1220;
+
+            /* ── Borders ── */
+            --border-subtle: #1e293b;
+            --border-active: #334155;
+
+            /* ── Text hierarchy ── */
+            --text-primary: #e2e8f0;
+            --text-secondary: #8892a4;
+            --text-muted: #4a5568;
+            --text-dim: #2d3748;
+
+            /* ── Accent: Bitcoin Orange ── */
+            --btc-orange: #f7931a;
+            --btc-orange-dim: #f7931a22;
+            --btc-orange-muted: #b36a10;
+
+            /* ── Accent: Starknet Blue ── */
+            --stark-blue: #29aafd;
+            --stark-blue-dim: #29aafd18;
+            --stark-blue-muted: #1a7ab8;
+
+            /* ── Semantic: States ── */
+            --locked-red: #ef4444;
+            --locked-glow: #ef444420;
+            --unlocking-amber: #f59e0b;
+            --unlocking-glow: #f59e0b18;
+            --success-green: #10b981;
+            --success-glow: #10b98118;
+            --error-red: #dc2626;
+            --error-glow: #dc262618;
+
+            /* ── Special ── */
+            --glow-pulse: #10b98140;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { font-size: 16px; }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, #29aafd06 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, #f7931a06 0%, transparent 50%);
+        }
+
+        /* Noise + grid overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                repeating-linear-gradient(0deg, #ffffff04 0px, transparent 1px, transparent 60px),
+                repeating-linear-gradient(90deg, #ffffff04 0px, transparent 1px, transparent 60px);
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            background-size: 256px 256px;
+        }
+
+        /* ── DASHBOARD SHELL ── */
+        .dashboard {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            min-height: 100vh;
+            background: var(--border-subtle);
+            gap: 1px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: var(--bg-surface);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            gap: 16px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo-text {
+            font: 700 2.5rem/1 'IBM Plex Mono', monospace;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+        .logo-sub {
+            font: 400 0.65rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* ── MODE BADGE ── */
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font: 500 0.65rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 6px 14px;
+            border: 1px solid;
+        }
+        .mode-badge.live {
+            color: var(--success-green);
+            border-color: var(--success-green);
+            background: var(--success-glow);
+        }
+        .mode-badge.live::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--success-green);
+            animation: blink 2s ease infinite;
+        }
+        .mode-badge.demo {
+            color: var(--unlocking-amber);
+            border-color: var(--unlocking-amber);
+            background: var(--unlocking-glow);
+        }
+        .mode-badge.demo::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--unlocking-amber);
+        }
+        .mode-badge.disconnected {
+            color: var(--error-red);
+            border-color: var(--error-red);
+            background: var(--error-glow);
+        }
+        .mode-badge.disconnected::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--error-red);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ── MAIN GRID ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            grid-template-rows: 1fr auto;
+            gap: 1px;
+            background: var(--border-subtle);
+        }
+
+        /* ── PANELS ── */
+        .panel {
+            background: var(--bg-surface);
+            position: relative;
+            border-radius: 0;
+        }
+        .panel-label {
+            font: 600 0.7rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 12px 16px 0;
+        }
+        .panel-body {
+            padding: 14px 16px;
+        }
+
+        /* ── ARCHITECTURE FLOW (top-left) ── */
+        .arch-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .arch-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            padding: 20px 16px;
+            flex: 1;
+            justify-content: center;
+        }
+        .arch-box {
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-input);
+            padding: 12px 16px;
+            width: 100%;
+            max-width: 280px;
+            position: relative;
+            transition: border-color 0.5s, box-shadow 0.5s;
+        }
+        .arch-box .arch-label {
+            font: 600 0.65rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .arch-box .arch-name {
+            font: 600 0.95rem/1.2 'IBM Plex Mono', monospace;
+            color: var(--text-primary);
+        }
+        .arch-box .arch-detail {
+            font: 400 0.7rem/1.4 'Fira Code', monospace;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            word-break: break-all;
+        }
+        .arch-box.brain { border-left: 2px solid var(--stark-blue); }
+        .arch-box.hand  { border-left: 2px solid var(--text-secondary); }
+        .arch-box.vault { border-left: 2px solid var(--btc-orange); }
+
+        /* Connectors */
+        .arch-connector {
+            width: 1px;
+            height: 28px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .arch-connector::before {
+            content: '';
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            background: repeating-linear-gradient(
+                to bottom,
+                var(--border-active) 0px,
+                var(--border-active) 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            background-size: 1px 8px;
+        }
+        .arch-connector .conn-arrow {
+            font: 400 0.7rem/1 'IBM Plex Mono', monospace;
+            color: var(--text-muted);
+            background: var(--bg-surface);
+            padding: 2px 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Animated connectors during UNLOCKING */
+        .arch-flow.unlocking .arch-connector::before {
+            animation: flow-dash 1s linear infinite;
+        }
+        .arch-flow.unlocking .arch-box.brain {
+            border-color: var(--stark-blue);
+            box-shadow: inset 0 0 20px var(--stark-blue-dim);
+            animation: box-glow-in 0.4s ease forwards;
+        }
+        .arch-flow.unlocking .arch-box.hand {
+            border-color: var(--text-secondary);
+            box-shadow: inset 0 0 20px #8892a418;
+            animation: box-glow-in 0.4s ease 0.4s forwards;
+        }
+        .arch-flow.unlocking .arch-box.vault {
+            border-color: var(--btc-orange);
+            box-shadow: inset 0 0 20px var(--btc-orange-dim);
+            animation: box-glow-in 0.4s ease 0.8s forwards;
+        }
+        .arch-flow.success .arch-box {
+            border-color: var(--success-green) !important;
+            box-shadow: inset 0 0 20px var(--success-glow) !important;
+            animation: success-flash 1s ease forwards !important;
+        }
+        .arch-flow.success .arch-connector::before {
+            background: var(--success-green) !important;
+        }
+
+        @keyframes flow-dash {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 8px; }
+        }
+        @keyframes box-glow-in {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        @keyframes success-flash {
+            0% { border-color: var(--success-green); box-shadow: 0 0 20px var(--glow-pulse); }
+            50% { border-color: var(--success-green); box-shadow: 0 0 30px var(--glow-pulse); }
+            100% { border-color: var(--border-subtle); box-shadow: none; }
+        }
+
+        /* ── VAULT STATE (top-right — hero element) ── */
+        .vault-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        .vault-display {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 20px;
+            text-align: center;
+            position: relative;
+        }
+        .vault-id {
+            font: 600 1.8rem/1 'IBM Plex Mono', monospace;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+        }
+        .vault-icon {
+            width: 56px;
+            height: 56px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .vault-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .vault-state-text {
+            font: 700 1.8rem/1 'IBM Plex Mono', monospace;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+            transition: color 0.3s, opacity 0.3s, transform 0.3s;
+        }
+        .vault-sub {
+            font: 400 0.9rem/1.4 'IBM Plex Sans', sans-serif;
+            color: var(--text-secondary);
+            max-width: 320px;
+        }
+
+        /* State colors */
+        .state-locked .vault-state-text { color: var(--locked-red); }
+        .state-locked .vault-icon { color: var(--locked-red); }
+        .state-locked .vault-icon::after {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 var(--locked-glow);
+            animation: pulse-ring 3s ease infinite;
+        }
+        .state-unlocking .vault-state-text { color: var(--unlocking-amber); }
+        .state-unlocking .vault-icon { color: var(--unlocking-amber); animation: icon-shake 0.6s ease infinite; }
+        .state-unlocked .vault-state-text { color: var(--success-green); }
+        .state-unlocked .vault-icon { color: var(--success-green); }
+        .state-error .vault-state-text { color: var(--error-red); }
+        .state-error .vault-icon { color: var(--error-red); }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 var(--locked-glow); }
+            50% { box-shadow: 0 0 0 16px transparent; }
+            100% { box-shadow: 0 0 0 0 transparent; }
+        }
+        @keyframes icon-shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-3deg); }
+            75% { transform: rotate(3deg); }
+        }
+
+        /* Unlocking steps */
+        .unlock-steps {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .step-word {
+            font: 500 0.7rem/1 'IBM Plex Mono', monospace;
+            color: var(--text-dim);
+            transition: color 0.4s;
+            letter-spacing: 0.05em;
+        }
+        .step-word.active { color: var(--unlocking-amber); }
+        .step-sep {
+            font: 400 0.7rem/1 'IBM Plex Mono', monospace;
+            color: var(--text-dim);
+        }
+
+        /* Spinner ring for unlocking */
+        .spin-ring {
+            position: absolute;
+            inset: -12px;
+            border: 2px solid transparent;
+            border-top-color: var(--unlocking-amber);
+            border-radius: 50%;
+            animation: spin 1.2s linear infinite;
+            display: none;
+        }
+        .state-unlocking .spin-ring { display: block; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success TX display */
+        .success-tx {
+            margin-top: 16px;
+            display: none;
+        }
+        .state-unlocked .success-tx { display: block; animation: scaleIn 0.4s ease-out; }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .tx-hash-display {
+            font: 400 0.85rem/1.4 'Fira Code', monospace;
+            color: var(--success-green);
+            word-break: break-all;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border-bottom: 1px solid #10b98140;
+            padding-bottom: 2px;
+        }
+        .tx-hash-display:hover { border-bottom-color: var(--success-green); }
+        .tx-explorer-link {
+            display: inline-block;
+            font: 500 0.65rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--btc-orange);
+            text-decoration: none;
+            margin-top: 8px;
+            transition: color 0.2s;
+        }
+        .tx-explorer-link:hover { color: var(--text-primary); }
+
+        /* Error display */
+        .error-display {
+            margin-top: 16px;
+            display: none;
+        }
+        .state-error .error-display { display: block; animation: fadeInUp 0.4s ease; }
+        .error-msg {
+            font: 400 0.8rem/1.5 'IBM Plex Sans', sans-serif;
+            color: var(--error-red);
+            max-width: 360px;
+        }
+        .fund-link {
+            display: inline-block;
+            margin-top: 8px;
+            font: 500 0.7rem/1 'IBM Plex Sans', sans-serif;
+            color: var(--btc-orange);
+            text-decoration: none;
+        }
+        .fund-link:hover { color: var(--text-primary); }
+
+        /* ── BOTTOM ROW ── */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 1px;
+            background: var(--border-subtle);
+        }
+
+        /* ── NETWORK DETAILS (bottom-left) ── */
+        .net-table {
+            width: 100%;
+        }
+        .net-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-top: 1px solid var(--border-subtle);
+            gap: 12px;
+        }
+        .net-row:first-child { border-top: none; }
+        .net-label {
+            font: 500 0.7rem/1 'IBM Plex Sans', sans-serif;
+            color: var(--text-muted);
+            min-width: 72px;
+            letter-spacing: 0.05em;
+        }
+        .net-value {
+            font: 400 0.85rem/1 'Fira Code', monospace;
+            color: var(--text-primary);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .net-value a {
+            color: var(--text-primary);
+            text-decoration: none;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: border-color 0.2s;
+        }
+        .net-value a:hover { border-bottom-color: var(--text-secondary); }
+        .net-tag {
+            font: 500 0.55rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+        }
+        .net-tag.starknet { color: var(--stark-blue); border-color: var(--stark-blue-dim); }
+        .net-tag.bitcoin { color: var(--btc-orange); border-color: var(--btc-orange-dim); }
+
+        .balance-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+        .balance-dot.good { background: var(--success-green); }
+        .balance-dot.low { background: var(--unlocking-amber); }
+        .balance-dot.empty { background: var(--error-red); }
+        .balance-dot.pulse { animation: dot-pulse 0.6s ease; }
+        @keyframes dot-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.8); }
+            100% { transform: scale(1); }
+        }
+
+        /* ── EVENT LOG (bottom-right) ── */
+        .event-log {
+            font: 400 0.78rem/1.6 'Fira Code', monospace;
+            color: var(--text-secondary);
+            background: var(--bg-input);
+            overflow-y: auto;
+            max-height: 200px;
+            padding: 10px 14px;
+            margin: 0 16px 14px;
+        }
+        .event-log::-webkit-scrollbar { width: 4px; }
+        .event-log::-webkit-scrollbar-track { background: transparent; }
+        .event-log::-webkit-scrollbar-thumb { background: var(--border-active); }
+
+        .log-entry {
+            animation: fadeInUp 0.2s ease;
+        }
+        .log-entry .log-time {
+            color: var(--text-dim);
+        }
+        .log-entry.event { color: var(--stark-blue); }
+        .log-entry.success { color: var(--success-green); }
+        .log-entry.error { color: var(--error-red); }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── TRANSACTION RECEIPT ── */
+        .tx-receipt-bar {
+            background: var(--bg-surface);
+        }
+        .tx-receipt {
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--success-green);
+            padding: 16px 20px;
+            transform: translateY(20px);
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tx-receipt.visible {
+            transform: translateY(0);
+            opacity: 1;
+            max-height: 300px;
+        }
+        .receipt-label {
+            font: 500 0.6rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .receipt-grid {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 6px 16px;
+            align-items: center;
+        }
+        .receipt-key {
+            font: 500 0.7rem/1 'IBM Plex Sans', sans-serif;
+            color: var(--text-muted);
+        }
+        .receipt-val {
+            font: 400 0.8rem/1 'Fira Code', monospace;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .receipt-link {
+            font: 500 0.6rem/1 'IBM Plex Sans', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .receipt-link.starknet { color: var(--stark-blue); }
+        .receipt-link.starknet:hover { color: var(--text-primary); }
+        .receipt-link.bitcoin { color: var(--btc-orange); }
+        .receipt-link.bitcoin:hover { color: var(--text-primary); }
+
+        /* ── COPY FEEDBACK ── */
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px;
+            transition: color 0.2s;
+            display: inline-flex;
+            align-items: center;
+        }
+        .copy-btn:hover { color: var(--text-primary); }
+        .copy-btn.copied { color: var(--success-green); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1199px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 899px) {
+            .logo-text { font-size: 1.4rem; }
+            .vault-state-text { font-size: 1.4rem; }
+            .receipt-grid { grid-template-columns: 1fr; gap: 8px; }
+        }
+
+        /* ── UTILITIES ── */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- ════ HEADER ════ -->
+        <header class="header">
+            <div class="header-left">
+                <div>
+                    <div class="logo-text">COVENANT-CAD</div>
+                    <div class="logo-sub">Bitcoin OP_CAT Covenant Simulator</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="modeBadge" class="mode-badge disconnected">DISCONNECTED</div>
+            </div>
+        </header>
+
+        <!-- ════ MAIN CONTENT ════ -->
+        <div class="main-grid">
+            <!-- ── Architecture Flow (top-left) ── -->
+            <div class="panel arch-panel">
+                <div class="panel-label">System Flow</div>
+                <div id="archFlow" class="arch-flow">
+                    <div class="arch-box brain">
+                        <div class="arch-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 3 1.5 5.5 4 7v3h8v-3c2.5-1.5 4-4 4-7a8 8 0 0 0-8-8z"/><path d="M10 22h4"/><path d="M9 10h1.5l1.5 2 1.5-2H15"/></svg>
+                            The Brain
+                        </div>
+                        <div class="arch-name">Starknet Sepolia</div>
+                        <div class="arch-detail" id="archBrainDetail">CovenantRegistry + Verifier</div>
+                    </div>
+                    <div class="arch-connector"><span class="conn-arrow">|</span></div>
+                    <div class="arch-box hand">
+                        <div class="arch-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                            The Hand
+                        </div>
+                        <div class="arch-name">Covenant Node</div>
+                        <div class="arch-detail">Event Listener + TX Builder</div>
+                    </div>
+                    <div class="arch-connector"><span class="conn-arrow">|</span></div>
+                    <div class="arch-box vault">
+                        <div class="arch-label">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="0"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+                            The Vault
+                        </div>
+                        <div class="arch-name">Bitcoin Signet</div>
+                        <div class="arch-detail" id="archVaultDetail">Real sBTC Transactions</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Vault State (top-right — hero) ── -->
+            <div class="panel vault-panel">
+                <div class="panel-label">Vault Status</div>
+                <div id="vaultDisplay" class="vault-display state-locked">
+                    <div class="vault-id" id="vaultIdLabel">VAULT #1</div>
+
+                    <div class="vault-icon" id="vaultIcon">
+                        <!-- Locked padlock SVG -->
+                        <svg id="iconLocked" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="0"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            <circle cx="12" cy="16" r="1.5"/>
+                        </svg>
+                        <!-- Unlocked padlock SVG (hidden) -->
+                        <svg id="iconUnlocked" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="0"/>
+                            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                            <circle cx="12" cy="16" r="1.5"/>
+                        </svg>
+                        <!-- Warning icon (hidden) -->
+                        <svg id="iconError" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <div class="spin-ring"></div>
+                    </div>
+
+                    <div class="vault-state-text" id="vaultStateText">LOCKED</div>
+                    <div class="vault-sub" id="vaultSub">Waiting for PullAuthorized event on Starknet Sepolia</div>
+
+                    <!-- Unlocking steps -->
+                    <div id="unlockSteps" class="unlock-steps hidden">
+                        <span class="step-word" data-step="0">Starknet</span>
+                        <span class="step-sep">&rarr;</span>
+                        <span class="step-word" data-step="1">Verifier</span>
+                        <span class="step-sep">&rarr;</span>
+                        <span class="step-word" data-step="2">Node</span>
+                        <span class="step-sep">&rarr;</span>
+                        <span class="step-word" data-step="3">Signet</span>
+                    </div>
+
+                    <!-- Success TX -->
+                    <div class="success-tx" id="successTx">
+                        <div class="tx-hash-display" id="txHashDisplay" onclick="copyTxHash()">
+                            <span id="txHashText"></span>
+                            <button class="copy-btn" id="txCopyBtn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="0"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>
+                            </button>
+                        </div>
+                        <a id="txExplorerLink" class="tx-explorer-link" href="#" target="_blank" rel="noopener">
+                            View on mempool.space &nearr;
+                        </a>
+                    </div>
+
+                    <!-- Error -->
+                    <div class="error-display" id="errorDisplay">
+                        <div class="error-msg" id="errorMsg"></div>
+                        <a id="fundLink" class="fund-link hidden" href="#" target="_blank" rel="noopener">
+                            Fund wallet at faucet &nearr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Bottom row ── -->
+            <div class="panel" style="grid-column: 1 / -1;">
+                <div class="bottom-grid">
+                    <!-- Network Details (bottom-left) -->
+                    <div class="panel">
+                        <div class="panel-label">Network Details</div>
+                        <div class="panel-body">
+                            <div class="net-table">
+                                <div class="net-row">
+                                    <span class="net-label">Starknet</span>
+                                    <span class="net-value"><a id="netStarknet" href="#" target="_blank" rel="noopener">—</a></span>
+                                    <span class="net-tag starknet">Sepolia</span>
+                                </div>
+                                <div class="net-row">
+                                    <span class="net-label">Bitcoin</span>
+                                    <span class="net-value"><a id="netBitcoin" href="#" target="_blank" rel="noopener">—</a></span>
+                                    <span class="net-tag bitcoin">Signet</span>
+                                </div>
+                                <div class="net-row">
+                                    <span class="net-label">Balance</span>
+                                    <span class="net-value">
+                                        <span id="netBalance">—</span>
+                                        <span id="balanceDot" class="balance-dot empty"></span>
+                                    </span>
+                                    <span class="net-tag">sats</span>
+                                </div>
+                                <div class="net-row">
+                                    <span class="net-label">Verifier</span>
+                                    <span class="net-value"><a id="netVerifier" href="#" target="_blank" rel="noopener">—</a></span>
+                                    <span class="net-tag starknet">Sepolia</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Event Log (bottom-right) -->
+                    <div class="panel">
+                        <div class="panel-label">Event Log</div>
+                        <div class="panel-body" style="padding-bottom: 0;">
+                            <div class="event-log" id="eventLog"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════ TRANSACTION RECEIPT ════ -->
+        <div class="tx-receipt-bar">
+            <div class="tx-receipt" id="txReceipt">
+                <div class="receipt-label">Transaction Receipt</div>
+                <div class="receipt-grid">
+                    <span class="receipt-key">Starknet TX</span>
+                    <span class="receipt-val" id="receiptStarkTx">—</span>
+                    <a class="receipt-link starknet" id="receiptStarkLink" href="#" target="_blank" rel="noopener">&nearr; Starkscan</a>
+
+                    <span class="receipt-key">Bitcoin TX</span>
+                    <span class="receipt-val" id="receiptBtcTx">—</span>
+                    <a class="receipt-link bitcoin" id="receiptBtcLink" href="#" target="_blank" rel="noopener">&nearr; mempool.space</a>
+
+                    <span class="receipt-key">Amount</span>
+                    <span class="receipt-val" id="receiptAmount">—</span>
+                    <span></span>
+
+                    <span class="receipt-key">Destination</span>
+                    <span class="receipt-val" id="receiptDest">—</span>
+                    <span></span>
+
+                    <span class="receipt-key">Timestamp</span>
+                    <span class="receipt-val" id="receiptTimestamp">—</span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ════════════════════════════════════════════════════════════
+        //   COVENANT-CAD UI  —  WebSocket Client & State Machine
+        // ════════════════════════════════════════════════════════════
+
+        const WS_URL = 'ws://localhost:8080/ws';
+        let ws;
+        let reconnectTimer;
+        let stepInterval;
+        let currentState = 'disconnected';
+
+        // ── State data ──
+        let stateData = {
+            walletAddress: '',
+            starknetContract: '',
+            explorerStarknet: '',
+            explorerBitcoin: '',
+            balance: 0,
+            lastTxHash: '',
+            lastExplorerUrl: '',
+            lastStarknetTx: '',
+        };
+
+        // ── Address truncation ──
+        function truncAddr(addr, start = 6, end = 4) {
+            if (!addr || addr.length <= start + end + 3) return addr || '—';
+            return addr.slice(0, start) + '...' + addr.slice(-end);
+        }
+
+        // ── Timestamp ──
+        function timeStr() {
+            const d = new Date();
+            return d.toTimeString().split(' ')[0];
+        }
+
+        // ── Log entry ──
+        function addLog(msg, type = 'info') {
+            const log = document.getElementById('eventLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry' + (type !== 'info' ? ' ' + type : '');
+            const prefix = type === 'event' ? '\u25B8 ' : type === 'success' ? '\u2713 ' : type === 'error' ? '\u2717 ' : '';
+            entry.innerHTML = '<span class="log-time">[' + timeStr() + ']</span> ' + prefix + msg;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // ── Copy to clipboard ──
+        function copyTxHash() {
+            if (!stateData.lastTxHash) return;
+            navigator.clipboard.writeText(stateData.lastTxHash).then(() => {
+                const btn = document.getElementById('txCopyBtn');
+                btn.classList.add('copied');
+                setTimeout(() => btn.classList.remove('copied'), 1500);
+            });
+        }
+
+        // ── Connection status ──
+        function setConnectionStatus(status) {
+            const badge = document.getElementById('modeBadge');
+            badge.className = 'mode-badge';
+            if (status === 'connected') {
+                badge.classList.add('live');
+                badge.textContent = 'LIVE SIGNET';
+            } else if (status === 'demo') {
+                badge.classList.add('demo');
+                badge.textContent = 'DEMO MODE';
+            } else {
+                badge.classList.add('disconnected');
+                badge.textContent = 'DISCONNECTED';
+            }
+        }
+
+        // ── Vault state machine ──
+        function setVaultState(state, data) {
+            currentState = state;
+            const display = document.getElementById('vaultDisplay');
+            const text = document.getElementById('vaultStateText');
+            const sub = document.getElementById('vaultSub');
+            const steps = document.getElementById('unlockSteps');
+            const archFlow = document.getElementById('archFlow');
+
+            // Reset classes
+            display.className = 'vault-display';
+            archFlow.className = 'arch-flow';
+            document.getElementById('iconLocked').classList.add('hidden');
+            document.getElementById('iconUnlocked').classList.add('hidden');
+            document.getElementById('iconError').classList.add('hidden');
+            steps.classList.add('hidden');
+            clearStepAnimation();
+
+            switch (state) {
+                case 'locked':
+                    display.classList.add('state-locked');
+                    document.getElementById('iconLocked').classList.remove('hidden');
+                    text.textContent = 'LOCKED';
+                    sub.textContent = 'Waiting for PullAuthorized event on Starknet Sepolia';
+                    break;
+
+                case 'unlocking':
+                    display.classList.add('state-unlocking');
+                    document.getElementById('iconLocked').classList.remove('hidden');
+                    archFlow.classList.add('unlocking');
+                    text.textContent = 'VERIFYING PROOF\u2026';
+                    sub.textContent = data && data.starknet_tx ?
+                        'Starknet TX: ' + truncAddr(data.starknet_tx, 10, 6) : 'Processing...';
+                    steps.classList.remove('hidden');
+                    startStepAnimation();
+                    if (data && data.starknet_tx) {
+                        addLog('PullAuthorized event detected — TX: ' + truncAddr(data.starknet_tx, 10, 6), 'event');
+                        addLog('Constructing Bitcoin Signet transaction...', 'event');
+                    }
+                    break;
+
+                case 'unlocked':
+                    display.classList.add('state-unlocked');
+                    document.getElementById('iconUnlocked').classList.remove('hidden');
+                    archFlow.classList.add('success');
+                    text.textContent = 'UNLOCKED';
+                    sub.textContent = 'Covenant executed successfully';
+                    if (data) {
+                        stateData.lastTxHash = data.tx_hash || '';
+                        stateData.lastExplorerUrl = data.explorer_url || '';
+                        stateData.lastStarknetTx = data.starknet_tx || '';
+                        document.getElementById('txHashText').textContent = truncAddr(data.tx_hash, 10, 8);
+                        document.getElementById('txExplorerLink').href = data.explorer_url || '#';
+                        // Receipt
+                        showReceipt(data);
+                        addLog('Broadcast successful — TXID: ' + truncAddr(data.tx_hash, 10, 8), 'success');
+                    }
+                    break;
+
+                case 'error':
+                    display.classList.add('state-error');
+                    document.getElementById('iconError').classList.remove('hidden');
+                    text.textContent = 'ERROR';
+                    sub.textContent = '';
+                    if (data) {
+                        document.getElementById('errorMsg').textContent = data.error || 'Unknown error';
+                        if (data.fund_url) {
+                            const fl = document.getElementById('fundLink');
+                            fl.href = data.fund_url;
+                            fl.classList.remove('hidden');
+                            fl.textContent = 'Fund wallet: ' + truncAddr(data.wallet_address || '', 8, 6) + ' \u2197';
+                        }
+                        addLog(data.error || 'Unknown error', 'error');
+                    }
+                    break;
+            }
+        }
+
+        // ── Step animation (Starknet → Verifier → Node → Signet) ──
+        let currentStep = 0;
+        function startStepAnimation() {
+            currentStep = 0;
+            stepInterval = setInterval(() => {
+                document.querySelectorAll('.step-word').forEach(el => el.classList.remove('active'));
+                const el = document.querySelector('.step-word[data-step="' + currentStep + '"]');
+                if (el) el.classList.add('active');
+                currentStep = (currentStep + 1) % 4;
+            }, 800);
+        }
+        function clearStepAnimation() {
+            if (stepInterval) clearInterval(stepInterval);
+            document.querySelectorAll('.step-word').forEach(el => el.classList.remove('active'));
+        }
+
+        // ── Transaction receipt ──
+        function showReceipt(data) {
+            const receipt = document.getElementById('txReceipt');
+            document.getElementById('receiptStarkTx').textContent = truncAddr(data.starknet_tx, 10, 6);
+            document.getElementById('receiptStarkTx').title = data.starknet_tx || '';
+            document.getElementById('receiptStarkLink').href = data.starknet_tx ?
+                'https://sepolia.voyager.online/tx/' + data.starknet_tx : '#';
+            document.getElementById('receiptBtcTx').textContent = truncAddr(data.tx_hash, 10, 8);
+            document.getElementById('receiptBtcTx').title = data.tx_hash || '';
+            document.getElementById('receiptBtcLink').href = data.explorer_url || '#';
+            document.getElementById('receiptAmount').textContent = (data.amount_sats || 0).toLocaleString() + ' sats';
+            document.getElementById('receiptDest').textContent = truncAddr(data.destination, 8, 6);
+            document.getElementById('receiptDest').title = data.destination || '';
+            document.getElementById('receiptTimestamp').textContent = new Date().toISOString().replace('T', ' ').split('.')[0] + ' UTC';
+            setTimeout(() => receipt.classList.add('visible'), 100);
+        }
+
+        // ── Network details ──
+        function updateNetworkDetails(data) {
+            if (data.starknet_contract) {
+                stateData.starknetContract = data.starknet_contract;
+                const el = document.getElementById('netStarknet');
+                el.textContent = truncAddr(data.starknet_contract, 8, 6);
+                el.title = data.starknet_contract;
+                el.href = data.explorer_starknet || '#';
+            }
+            if (data.wallet_address) {
+                stateData.walletAddress = data.wallet_address;
+                const el = document.getElementById('netBitcoin');
+                el.textContent = truncAddr(data.wallet_address, 8, 6);
+                el.title = data.wallet_address;
+                el.href = data.explorer_bitcoin || '#';
+                // Arch vault detail
+                document.getElementById('archVaultDetail').textContent = truncAddr(data.wallet_address, 8, 6);
+            }
+            if (data.starknet_contract) {
+                document.getElementById('archBrainDetail').textContent = truncAddr(data.starknet_contract, 8, 6);
+            }
+            if (typeof data.wallet_balance_sats !== 'undefined') {
+                stateData.balance = data.wallet_balance_sats;
+                document.getElementById('netBalance').textContent = data.wallet_balance_sats.toLocaleString();
+                const dot = document.getElementById('balanceDot');
+                dot.className = 'balance-dot pulse';
+                if (data.wallet_balance_sats > 1000) dot.classList.add('good');
+                else if (data.wallet_balance_sats > 0) dot.classList.add('low');
+                else dot.classList.add('empty');
+                setTimeout(() => dot.classList.remove('pulse'), 600);
+            }
+        }
+
+        // ── WebSocket ──
+        function connect() {
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                clearTimeout(reconnectTimer);
+                addLog('Connected to Covenant Node', 'info');
+            };
+
+            ws.onclose = () => {
+                setConnectionStatus('disconnected');
+                addLog('Connection lost. Reconnecting...', 'error');
+                reconnectTimer = setTimeout(connect, 3000);
+            };
+
+            ws.onerror = () => {
+                ws.close();
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+        }
+
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'status':
+                    if (data.msg && data.msg.includes('DEMO')) {
+                        setConnectionStatus('demo');
+                    } else {
+                        setConnectionStatus('connected');
+                    }
+                    updateNetworkDetails(data);
+                    setVaultState('locked');
+                    addLog('Watching vault #' + (data.vault_id || 1) + ' on Starknet Sepolia');
+                    break;
+
+                case 'unlocking':
+                    setVaultState('unlocking', data);
+                    break;
+
+                case 'success':
+                    setVaultState('unlocked', data);
+                    break;
+
+                case 'error':
+                    setVaultState('error', data);
+                    break;
+            }
+        }
+
+        // ── Init ──
+        addLog('Initializing Covenant-CAD UI...');
+        addLog('Connecting to ws://localhost:8080/ws...');
+        connect();
+    </script>
+</body>
+</html>
