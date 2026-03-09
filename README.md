@@ -10,6 +10,14 @@
 
 > A developer sandbox that simulates Bitcoin OP_CAT covenants using Starknet as the enforcement layer and a Python node as the executor. Every transaction is real and verifiable on public testnet explorers — zero cost.
 
+### Live Deployments
+
+| Component | Address | Explorer |
+|-----------|---------|----------|
+| **CovenantRegistry** | `0x07a54991b...218fd` | [View on Voyager](https://sepolia.voyager.online/contract/0x07a54991b939e30d676343fd6fd46bb405d4c501f6881ae0926bed8559f218fd) |
+| **SimpleVerifier** | `0x04524784a...6f4a` | [View on Voyager](https://sepolia.voyager.online/contract/0x04524784a7e74e9b7ecc797576ee72b6c80c0e9d0afec207fe511c8cb8ab6f4a) |
+| **Bitcoin Wallet** | `tb1qhhgz0s...47r2n` | [View on mempool.space](https://mempool.space/signet/address/tb1qhhgz0s5xcwjune96tkmqswaqy90mu6flz47r2n) |
+
 ---
 
 ## Table of Contents
