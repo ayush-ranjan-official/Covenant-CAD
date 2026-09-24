@@ -1,6 +1,7 @@
 # Covenant-CAD
 
 **Bitcoin OP_CAT Covenant Simulator — Starknet as The Brain, Bitcoin Signet as The Vault**
+**[Demo Video](https://youtu.be/qAxAkQN3QjQ?si=_A5ch3y64kWduek9)**
 
 ![Built on Starknet Sepolia](https://img.shields.io/badge/Starknet-Sepolia-blue)
 ![Bitcoin Signet](https://img.shields.io/badge/Bitcoin-Signet-orange)
